@@ -1,56 +1,47 @@
-delete begin () break:
+void insert begin()
 
-delete end () break;
+struct node temp:
 
-delete pod () : break;
+temp (struct node malloc (sizeof (struct node)):
 
-exit(): break:
+if (temp==NULL)
 
-printf ("\n Wrong Choice: : break:
-
-case 7:
-
-case 8:
-
-case 9:
-
-default:
-
-return 0;
-
-1 vold ereate()
-
-struet node temp, *ptr:
-
-temp (struct node ) malloc (sizeof (struct node)): if (temp-NULL)
-
-printf("\nout of Memory Space:n"); exit (0);
-
-1 printf("\nEnter the data value for the nodert": scanf ("d", &temp->info); temp->next-NULL: it startNU11)
-
-1.
-
-1 else
-
-start temp:
-
-ptr start:
-
-while tptr->next. NULL)
-
-1
-
-ptr-ptr->next;
-
-ptr->next=temp:
-
-vold display
-
-struct node ptri LE (startNULL)
-
-printf(int is empty ":
+printf("Anout of Methory Spacein");
 
 return:
 
-ptreatart:
+printf("\nEnter the data value for the node:t" scan(d, stemp-Sintol: temp->next NULL:
 
+SE (start-NULL)
+
+start-temp:
+
+temp->next start, start-temp;
+
+else
+
+1
+
+void insert end ()
+
+struct node temp, "ptri Lemp (struct node ) malloc (sizeof (struct noda); SE(tempNULL)
+
+print ("\out of Memory Space return:
+
+printf ("\nEnter the data value for the nodetE" scand ", temp->into
+
+temp->next NULL sE (startNULL)
+
+start temp:
+
+else
+
+ptr start;
+
+while ptr->next !=NULL)
+
+ptr=ptr->next
+
+next =temp:
+
+void insert poz||
