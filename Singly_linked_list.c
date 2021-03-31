@@ -1,68 +1,56 @@
-#include<stdlib.h> 
-#include <stdio.h>
+delete begin () break:
 
-void create();
-void display();
-void insert_begin();
-void insert_end();
-void insert_pos();
-void delete_begin();
-void delete_end();
-void delete_pos();
+delete end () break;
 
-struct node
-{
-int info;
-struct node *next;
-}
+delete pod () : break;
 
-struct node *start = NULL; 
+exit(): break:
 
-int main()
-{
-int choice;
-while (1) {
+printf ("\n Wrong Choice: : break:
 
-printf("\n MENU \n");
+case 7:
 
-printf("\n 1.Create \n);
+case 8:
 
-printf("\n 2.Display \n");
+case 9:
 
-printf("\n 3.Insert at the beginning\n");
+default:
 
-printf("\n 4.Insert at the end \n"):
+return 0;
 
-print ("\n 5.Innert at specified position printf(\n 6. Delete from beginning ")
+1 vold ereate()
 
-printf("\n 7. Delete from the end
+struet node temp, *ptr:
 
-printf ("\n 8.Delete from specified position
+temp (struct node ) malloc (sizeof (struct node)): if (temp-NULL)
 
-printf ("\n 9.Exit
+printf("\nout of Memory Space:n"); exit (0);
 
-print
+1 printf("\nEnter the data value for the nodert": scanf ("d", &temp->info); temp->next-NULL: it startNU11)
 
-printti Enter your choicert")
+1.
 
-scant (d, schoice)
+1 else
 
-switch (choice)
+start temp:
 
-Case 1:
+ptr start:
 
---n")
+while tptr->next. NULL)
 
-create (
+1
 
-break;
+ptr-ptr->next;
 
-display it break
+ptr->next=temp:
 
-insert begin ()a
+vold display
 
-break:
+struct node ptri LE (startNULL)
 
-insert end (1 break
+printf(int is empty ":
 
-insert pos ( breaks
+return:
+
+ptreatart:
+
