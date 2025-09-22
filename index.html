@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeerJS Chat Application</title>
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .connection-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .my-id {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .connection-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.waiting {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .chat-section {
+            margin-top: 30px;
+        }
+
+        .messages {
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.received {
+            background-color: #e9ecef;
+            color: #333;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 3px;
+        }
+
+        .message-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input input {
+            flex: 1;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+
+        .copy-button {
+            background-color: #28a745;
+            margin-left: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .copy-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 PeerJS Chat Application</h1>
+        
+        <div class="instructions">
+            <h3>How to use:</h3>
+            <ol>
+                <li>Wait for your Peer ID to be generated below</li>
+                <li>Share your Peer ID with a friend</li>
+                <li>Enter your friend's Peer ID and click "Connect"</li>
+                <li>Start chatting! No server required after initial connection.</li>
+            </ol>
+        </div>
+
+        <div class="connection-section">
+            <h3>Your Peer ID:</h3>
+            <div class="my-id">
+                <span id="my-peer-id">Generating...</span>
+                <button class="copy-button" id="copy-id-btn" onclick="copyPeerId()">Copy</button>
+            </div>
+            
+            <div class="connection-controls">
+                <input type="text" id="peer-id-input" placeholder="Enter friend's Peer ID to connect">
+                <button id="connect-btn" onclick="connectToPeer()">Connect</button>
+                <button id="disconnect-btn" onclick="disconnectFromPeer()" disabled>Disconnect</button>
+            </div>
+            
+            <div id="status" class="status disconnected">Not connected</div>
+        </div>
+
+        <div class="chat-section">
+            <h3>Chat Messages:</h3>
+            <div id="messages" class="messages"></div>
+            <div class="message-input">
+                <input type="text" id="message-input" placeholder="Type your message..." disabled>
+                <button id="send-btn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let peer;
+        let conn;
+        let isConnected = false;
+
+        // Initialize PeerJS
+        function initializePeer() {
+            peer = new Peer();
+            
+            peer.on('open', function(id) {
+                document.getElementById('my-peer-id').textContent = id;
+                updateStatus('waiting', 'Waiting for connection...');
+            });
+
+            peer.on('connection', function(connection) {
+                conn = connection;
+                setupConnection();
+            });
+
+            peer.on('error', function(err) {
+                console.error('PeerJS error:', err);
+                updateStatus('disconnected', 'Error: ' + err.message);
+            });
+        }
+
+        // Setup connection event handlers
+        function setupConnection() {
+            conn.on('open', function() {
+                isConnected = true;
+                updateStatus('connected', 'Connected to peer!');
+                enableChat();
+            });
+
+            conn.on('data', function(data) {
+                receiveMessage(data);
+            });
+
+            conn.on('close', function() {
+                isConnected = false;
+                updateStatus('disconnected', 'Connection closed');
+                disableChat();
+            });
+
+            conn.on('error', function(err) {
+                console.error('Connection error:', err);
+                updateStatus('disconnected', 'Connection error: ' + err.message);
+                disableChat();
+            });
+        }
+
+        // Connect to a peer
+        function connectToPeer() {
+            const peerId = document.getElementById('peer-id-input').value.trim();
+            if (!peerId) {
+                alert('Please enter a Peer ID');
+                return;
+            }
+
+            updateStatus('waiting', 'Connecting...');
+            conn = peer.connect(peerId);
+            setupConnection();
+        }
+
+        // Disconnect from peer
+        function disconnectFromPeer() {
+            if (conn) {
+                conn.close();
+            }
+            isConnected = false;
+            updateStatus('disconnected', 'Disconnected');
+            disableChat();
+        }
+
+        // Send message
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (message && isConnected) {
+                const messageData = {
+                    text: message,
+                    timestamp: new Date().toLocaleTimeString(),
+                    sender: 'me'
+                };
+                
+                conn.send(messageData);
+                displayMessage(messageData, 'sent');
+                messageInput.value = '';
+            }
+        }
+
+        // Receive message
+        function receiveMessage(messageData) {
+            displayMessage(messageData, 'received');
+        }
+
+        // Display message in chat
+        function displayMessage(messageData, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            messageDiv.innerHTML = `
+                <div>${messageData.text}</div>
+                <div class="message-time">${messageData.timestamp}</div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Update connection status
+        function updateStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            
+            // Update button states
+            const connectBtn = document.getElementById('connect-btn');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            
+            if (type === 'connected') {
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        // Enable chat interface
+        function enableChat() {
+            document.getElementById('message-input').disabled = false;
+            document.getElementById('send-btn').disabled = false;
+        }
+
+        // Disable chat interface
+        function disableChat() {
+            document.getElementById('message-input').disabled = true;
+            document.getElementById('send-btn').disabled = true;
+        }
+
+        // Copy peer ID to clipboard
+        function copyPeerId() {
+            const peerIdText = document.getElementById('my-peer-id').textContent;
+            if (peerIdText !== 'Generating...') {
+                navigator.clipboard.writeText(peerIdText).then(function() {
+                    const copyBtn = document.getElementById('copy-id-btn');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.style.backgroundColor = '#28a745';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.backgroundColor = '';
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                    alert('Peer ID: ' + peerIdText);
+                });
+            }
+        }
+
+        // Handle Enter key in message input
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Initialize PeerJS when page loads
+            initializePeer();
+        });
+    </script>
+</body>
+</html>
