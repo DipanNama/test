@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeerJS Chat + Video</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()">Dark Mode</button>
+    
+    <h1>Modern Chat + Video</h1>
+
+    <div class="my-id" id="my-peer-id">
+      <span>Generating your code...</span>
+      <div class="loading"></div>
+    </div>
+
+    <div class="chat-section">
+      <div class="connection-form">
+        <h3>Connect to Friend</h3>
+        <div class="input-group">
+          <input type="text" id="peer-id-input" placeholder="Enter 6-digit code" maxlength="6" />
+          <button onclick="connectToPeer()">Connect</button>
+        </div>
+      </div>
+
+      <div class="section-title">Messages</div>
+      <div id="messages" class="messages"></div>
+
+      <div class="message-input-container">
+        <input type="text" id="message-input" placeholder="Type your message..." />
+        <button class="send-button" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <div class="video-section">
+      <div class="section-title">Video Chat</div>
+      <div class="video-container">
+        <div>
+          <div class="video-label">Your Video</div>
+          <video id="my-video" autoplay muted></video>
+        </div>
+        <div>
+          <div class="video-label">Friend's Video</div>
+          <video id="peer-video" autoplay></video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
