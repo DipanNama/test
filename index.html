@@ -4,230 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PeerJS Chat + Video</title>
+  <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #f0f0f0;
-    }
-
-    .container {
-      background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .my-id {
-      background: #e3f2fd;
-      padding: 10px;
-      border-radius: 6px;
-      font-weight: bold;
-      text-align: center;
-      font-size: 18px;
-      letter-spacing: 2px;
-    }
-
-    .messages {
-      height: 250px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      overflow-y: auto;
-      padding: 10px;
-      background: #fafafa;
-      margin-bottom: 10px;
-    }
-
-    .divider {
-      text-align: center;
-      margin: 10px 0;
-      font-size: 12px;
-      color: #888;
-      position: relative;
-    }
-    .divider::before, .divider::after {
-      content: "";
-      height: 1px;
-      width: 40%;
-      background: #ccc;
-      position: absolute;
-      top: 50%;
-    }
-    .divider::before { left: 0; }
-    .divider::after { right: 0; }
-
-    .message {
-      margin-bottom: 8px;
-      padding: 8px 12px;
-      border-radius: 6px;
-      max-width: 70%;
-      word-wrap: break-word;
-    }
-    .sent {
-      background: #007bff;
-      color: white;
-      margin-left: auto;
-    }
-    .received {
-      background: #e9ecef;
-      color: #333;
-    }
-
-    video {
-      width: 45%;
-      border-radius: 8px;
-      margin: 5px;
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-    <h1>💬 PeerJS Chat + Video</h1>
+    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()">Dark Mode</button>
+    
+    <h1>Modern Chat + Video</h1>
 
-    <div>
-      <h3>Your Code:</h3>
-      <div class="my-id" id="my-peer-id">Generating...</div>
+    <div class="my-id" id="my-peer-id">
+      <span>Generating your code...</span>
+      <div class="loading"></div>
     </div>
 
-    <div style="margin:15px 0;">
-      <input type="text" id="peer-id-input" placeholder="Enter 6-digit code" />
-      <button onclick="connectToPeer()">Connect</button>
+    <div class="chat-section">
+      <div class="connection-form">
+        <h3>Connect to Friend</h3>
+        <div class="input-group">
+          <input type="text" id="peer-id-input" placeholder="Enter 6-digit code" maxlength="6" />
+          <button onclick="connectToPeer()">Connect</button>
+        </div>
+      </div>
+
+      <div class="section-title">Messages</div>
+      <div id="messages" class="messages"></div>
+
+      <div class="message-input-container">
+        <input type="text" id="message-input" placeholder="Type your message..." />
+        <button class="send-button" onclick="sendMessage()">Send</button>
+      </div>
     </div>
 
-    <h3>Messages</h3>
-    <div id="messages" class="messages"></div>
-
-    <div>
-      <input type="text" id="message-input" placeholder="Type..." />
-      <button onclick="sendMessage()">Send</button>
+    <div class="video-section">
+      <div class="section-title">Video Chat</div>
+      <div class="video-container">
+        <div>
+          <div class="video-label">Your Video</div>
+          <video id="my-video" autoplay muted></video>
+        </div>
+        <div>
+          <div class="video-label">Friend's Video</div>
+          <video id="peer-video" autoplay></video>
+        </div>
+      </div>
     </div>
-
-    <h3>Video</h3>
-    <video id="my-video" autoplay muted></video>
-    <video id="peer-video" autoplay></video>
   </div>
 
-  <script>
-    let peer, conn, call;
-    let myId;
-    let chatHistory = [];
-
-    // 🔹 Generate a simple 6-digit ID
-    function generatePeerId() {
-      return Math.floor(100000 + Math.random() * 900000).toString();
-    }
-
-    // 🔹 Save chat to localStorage
-    function saveHistory() {
-      localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
-    }
-
-    // 🔹 Load chat from localStorage
-    function loadHistory() {
-      let stored = JSON.parse(localStorage.getItem("chatHistory")) || [];
-      if (stored.length > 0) {
-        const divider = document.createElement("div");
-        divider.className = "divider";
-        divider.textContent = "Previous Messages";
-        document.getElementById("messages").appendChild(divider);
-      }
-      stored.forEach(m => displayMessage(m.text, m.type, m.time, false));
-      chatHistory = stored;
-    }
-
-    // Initialize Peer
-    function initializePeer() {
-      myId = generatePeerId();
-      peer = new Peer(myId, {
-        config: {
-          'iceServers': [{ urls: "stun:stun.l.google.com:19302" }]
-        }
-      });
-
-      peer.on("open", id => {
-        document.getElementById("my-peer-id").textContent = id;
-        loadHistory();
-      });
-
-      peer.on("connection", connection => {
-        conn = connection;
-        setupConnection();
-      });
-
-      peer.on("call", incomingCall => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-          .then(stream => {
-            document.getElementById("my-video").srcObject = stream;
-            incomingCall.answer(stream);
-            incomingCall.on("stream", remoteStream => {
-              document.getElementById("peer-video").srcObject = remoteStream;
-            });
-          });
-      });
-    }
-
-    function setupConnection() {
-      conn.on("open", () => {
-        console.log("Connected to peer!");
-      });
-      conn.on("data", data => {
-        displayMessage(data.text, "received", data.time);
-        chatHistory.push({ text: data.text, type: "received", time: data.time });
-        saveHistory();
-      });
-    }
-
-    function connectToPeer() {
-      const peerId = document.getElementById("peer-id-input").value.trim();
-      if (!peerId) return;
-      conn = peer.connect(peerId);
-      setupConnection();
-
-      // Video call
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-          document.getElementById("my-video").srcObject = stream;
-          call = peer.call(peerId, stream);
-          call.on("stream", remoteStream => {
-            document.getElementById("peer-video").srcObject = remoteStream;
-          });
-        });
-    }
-
-    function sendMessage() {
-      const input = document.getElementById("message-input");
-      const text = input.value.trim();
-      if (!text || !conn) return;
-
-      const message = { text, type: "sent", time: new Date().toLocaleTimeString() };
-      conn.send(message);
-      displayMessage(message.text, message.type, message.time);
-      chatHistory.push(message);
-      saveHistory();
-      input.value = "";
-    }
-
-    function displayMessage(text, type, time, addToHistory = true) {
-      const div = document.createElement("div");
-      div.className = "message " + type;
-      div.innerHTML = `<div>${text}</div><small>${time}</small>`;
-      document.getElementById("messages").appendChild(div);
-      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-      if (addToHistory) {
-        chatHistory.push({ text, type, time });
-        saveHistory();
-      }
-    }
-
-    initializePeer();
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
