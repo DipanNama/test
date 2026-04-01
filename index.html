@@ -286,19 +286,26 @@
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
+    // FIX: Added explicit transport=tcp to bypass strict carrier NATs (like Jio)
+    // that drop P2P UDP packets. 
     const peerConfig = {
       debug: 3, 
       config: {
-        'iceServers': [
+        iceTransportPolicy: 'all', // Ensure it allows TURN routing
+        iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          // UDP Fallback
           {
             urls: 'turn:openrelay.metered.ca:80',
             username: 'openrelayproject',
             credential: 'openrelayproject'
           },
+          // Strict TCP Override (looks like HTTPS traffic to network firewalls)
           {
-            urls: 'turn:openrelay.metered.ca:443',
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
             username: 'openrelayproject',
             credential: 'openrelayproject'
           }
@@ -318,17 +325,16 @@
         updateStatus('Connecting to host...', '');
         console.log("Guest: Connected to signaling server, attempting to reach room:", roomCode);
         
-        // Removed { reliable: true } to prevent strict SCTP hangs on certain networks
         conn = peer.connect(roomCode);
         
-        // Timeout check if WebRTC is blocked completely
+        // Extended timeout to 25 seconds (TCP relay discovery takes longer)
         let connectionTimeout = setTimeout(() => {
           if (!conn.open) {
             updateStatus('Connection timed out', 'disconnected');
-            appendMessage('Failed to establish a peer-to-peer connection. Network firewalls might be blocking it.', 'system');
+            appendMessage('Failed to establish connection. Both strict carrier firewalls (Symmetric NAT) and TURN relays failed.', 'system');
             conn.close();
           }
-        }, 15000); // 15 seconds
+        }, 25000); 
 
         conn.on('open', () => clearTimeout(connectionTimeout));
 
@@ -366,13 +372,7 @@
 
       peer.on('connection', (connection) => {
         console.log("Host: Received incoming connection request");
-        if (conn && conn.open) {
-          connection.on('open', () => {
-            connection.send('Room is full.');
-            connection.close();
-          });
-          return;
-        }
+        // Replace current connection if a new one comes in
         conn = connection;
         setupConnection(conn);
       });
@@ -384,7 +384,6 @@
     }
 
     function setupConnection(connection) {
-      // FIX: Handle race condition where connection is already open before event listener is attached
       const handleOpen = () => {
         console.log("Connection fully established!");
         updateStatus('Connected to friend', 'connected');
