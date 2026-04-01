@@ -75,19 +75,19 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: #fbbf24; /* Warning/Connecting yellow */
+      background-color: #fbbf24;
       transition: background-color 0.3s;
     }
     
-    .status-dot.connected { background-color: #10b981; /* Success green */ }
-    .status-dot.disconnected { background-color: #ef4444; /* Error red */ }
+    .status-dot.connected { background-color: #10b981; }
+    .status-dot.disconnected { background-color: #ef4444; }
 
     .share-container {
       padding: 1.25rem;
       background-color: #eff6ff;
       border-bottom: 1px solid #bfdbfe;
       text-align: center;
-      display: none; /* Hidden by default */
+      display: none;
     }
 
     .share-container p {
@@ -213,7 +213,6 @@
       transform: scale(0.95);
     }
 
-    /* SVG Icon for send button */
     .send-icon {
       width: 20px;
       height: 20px;
@@ -259,7 +258,6 @@
   </div>
 
   <script>
-    // Elements
     const statusText = document.getElementById('status-text');
     const statusDot = document.getElementById('status-dot');
     const shareContainer = document.getElementById('share-container');
@@ -271,17 +269,14 @@
     let peer;
     let conn;
 
-    // Helper: Generate a random 6-character code
     const generateId = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    // Helper: Update UI Status
     function updateStatus(message, state) {
       statusText.innerText = message;
-      statusDot.className = 'status-dot'; // reset
+      statusDot.className = 'status-dot';
       if (state) statusDot.classList.add(state);
     }
 
-    // Helper: Add message to chat UI
     function appendMessage(text, type) {
       const msgDiv = document.createElement('div');
       msgDiv.className = type === 'system' ? 'system-message' : `message ${type}`;
@@ -290,16 +285,25 @@
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
-    // Initialize App based on URL parameters
+    // STUN Servers to bypass firewalls and strict NATs
+    const peerConfig = {
+      config: {
+        'iceServers': [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' }
+        ]
+      }
+    };
+
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('code');
 
     if (roomCode) {
-      // -----------------------------
-      // GUEST MODE: Joining a room
-      // -----------------------------
+      // GUEST MODE
       updateStatus('Connecting to server...', '');
-      peer = new Peer(); // Let server assign a random ID to us
+      peer = new Peer(undefined, peerConfig); 
 
       peer.on('open', (id) => {
         updateStatus('Connecting to host...', '');
@@ -308,37 +312,31 @@
       });
 
       peer.on('error', (err) => {
-        updateStatus('Connection error. Invalid code?', 'disconnected');
-        appendMessage('Failed to connect. The host might have left or the code is wrong.', 'system');
+        updateStatus('Connection error', 'disconnected');
+        appendMessage('Failed to connect. The host might have left, the code is wrong, or a firewall is blocking the connection.', 'system');
         console.error(err);
       });
 
     } else {
-      // -----------------------------
-      // HOST MODE: Creating a room
-      // -----------------------------
+      // HOST MODE
       const newCode = generateId();
       updateStatus('Creating room...', '');
-      peer = new Peer(newCode); // Force our ID to be the new code
+      peer = new Peer(newCode, peerConfig); 
 
       peer.on('open', (id) => {
         updateStatus('Waiting for friend...', '');
         
-        // Construct the shareable URL and update the browser without reloading
         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         const shareUrl = `${cleanUrl}?code=${id}`;
         
         window.history.pushState({path: shareUrl}, '', shareUrl);
         
-        // Show share UI
         shareLinkInput.value = shareUrl;
         shareContainer.style.display = 'block';
       });
 
-      // Listen for incoming connections
       peer.on('connection', (connection) => {
         if (conn && conn.open) {
-          // Reject new connections if we are already chatting
           connection.on('open', () => {
             connection.send('Room is full.');
             connection.close();
@@ -355,13 +353,11 @@
       });
     }
 
-    // Common Connection Setup Logic
     function setupConnection(connection) {
       connection.on('open', () => {
         updateStatus('Connected to friend', 'connected');
-        shareContainer.style.display = 'none'; // Hide share link
+        shareContainer.style.display = 'none';
         
-        // Enable inputs
         messageInput.disabled = false;
         sendBtn.disabled = false;
         messageInput.placeholder = "Type a message...";
@@ -383,7 +379,6 @@
       });
     }
 
-    // Sending Messages
     function sendMessage() {
       const text = messageInput.value.trim();
       if (text && conn && conn.open) {
@@ -394,17 +389,15 @@
       }
     }
 
-    // Allow pressing "Enter" to send
     messageInput.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         sendMessage();
       }
     });
 
-    // Copy Share Link feature
     function copyLink() {
       shareLinkInput.select();
-      shareLinkInput.setSelectionRange(0, 99999); // For mobile devices
+      shareLinkInput.setSelectionRange(0, 99999);
       navigator.clipboard.writeText(shareLinkInput.value).then(() => {
         const btn = document.getElementById('copy-btn');
         const originalText = btn.innerText;
