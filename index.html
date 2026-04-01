@@ -3,54 +3,415 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PeerJS Chat + Video</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <title>Peer-to-Peer Chat</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --bubble-sent: #3b82f6;
+      --bubble-received: #e5e7eb;
+      --text-sent: #ffffff;
+      --text-received: #1f2937;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 1rem;
+    }
+
+    .app-container {
+      background-color: var(--card-bg);
+      width: 100%;
+      max-width: 450px;
+      height: 90vh;
+      max-height: 800px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .status {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #fbbf24; /* Warning/Connecting yellow */
+      transition: background-color 0.3s;
+    }
+    
+    .status-dot.connected { background-color: #10b981; /* Success green */ }
+    .status-dot.disconnected { background-color: #ef4444; /* Error red */ }
+
+    .share-container {
+      padding: 1.25rem;
+      background-color: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      text-align: center;
+      display: none; /* Hidden by default */
+    }
+
+    .share-container p {
+      font-size: 0.875rem;
+      color: #1e3a8a;
+      margin-bottom: 0.5rem;
+    }
+
+    .share-input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .share-input-group input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .share-input-group button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .share-input-group button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .chat-area {
+      flex: 1;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background-color: #fafafa;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.9375rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .message.sent {
+      align-self: flex-end;
+      background-color: var(--bubble-sent);
+      color: var(--text-sent);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.received {
+      align-self: flex-start;
+      background-color: var(--bubble-received);
+      color: var(--text-received);
+      border-bottom-left-radius: 4px;
+    }
+
+    .system-message {
+      align-self: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin: 0.5rem 0;
+    }
+
+    .input-area {
+      padding: 1rem;
+      background-color: var(--card-bg);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      outline: none;
+      font-size: 0.9375rem;
+      transition: border-color 0.2s;
+    }
+
+    .input-area input:focus {
+      border-color: var(--primary);
+    }
+
+    .input-area button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 999px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .input-area button:disabled, 
+    .input-area input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .input-area button:not(:disabled):active {
+      transform: scale(0.95);
+    }
+
+    /* SVG Icon for send button */
+    .send-icon {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()">Dark Mode</button>
-    
-    <h1>Modern Chat + Video</h1>
 
-    <div class="my-id" id="my-peer-id">
-      <span>Generating your code...</span>
-      <div class="loading"></div>
-    </div>
-
-    <div class="chat-section">
-      <div class="connection-form">
-        <h3>Connect to Friend</h3>
-        <div class="input-group">
-          <input type="text" id="peer-id-input" placeholder="Enter 6-digit code" maxlength="6" />
-          <button onclick="connectToPeer()">Connect</button>
-        </div>
+  <div class="app-container">
+    <header class="header">
+      <h1>Secure Chat</h1>
+      <div class="status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Initializing...</span>
       </div>
+    </header>
 
-      <div class="section-title">Messages</div>
-      <div id="messages" class="messages"></div>
-
-      <div class="message-input-container">
-        <input type="text" id="message-input" placeholder="Type your message..." />
-        <button class="send-button" onclick="sendMessage()">Send</button>
+    <div class="share-container" id="share-container">
+      <p>Send this link to a friend to connect:</p>
+      <div class="share-input-group">
+        <input type="text" id="share-link" readonly>
+        <button id="copy-btn" onclick="copyLink()">Copy</button>
       </div>
     </div>
 
-    <div class="video-section">
-      <div class="section-title">Video Chat</div>
-      <div class="video-container">
-        <div>
-          <div class="video-label">Your Video</div>
-          <video id="my-video" autoplay muted></video>
-        </div>
-        <div>
-          <div class="video-label">Friend's Video</div>
-          <video id="peer-video" autoplay></video>
-        </div>
+    <div class="chat-area" id="chat-area">
       </div>
+
+    <div class="input-area">
+      <input type="text" id="message-input" placeholder="Waiting for connection..." disabled>
+      <button id="send-btn" onclick="sendMessage()" disabled>
+        <svg class="send-icon" viewBox="0 0 24 24">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    // Elements
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.getElementById('status-dot');
+    const shareContainer = document.getElementById('share-container');
+    const shareLinkInput = document.getElementById('share-link');
+    const chatArea = document.getElementById('chat-area');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    let peer;
+    let conn;
+
+    // Helper: Generate a random 6-character code
+    const generateId = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Helper: Update UI Status
+    function updateStatus(message, state) {
+      statusText.innerText = message;
+      statusDot.className = 'status-dot'; // reset
+      if (state) statusDot.classList.add(state);
+    }
+
+    // Helper: Add message to chat UI
+    function appendMessage(text, type) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = type === 'system' ? 'system-message' : `message ${type}`;
+      msgDiv.innerText = text;
+      chatArea.appendChild(msgDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    // Initialize App based on URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('code');
+
+    if (roomCode) {
+      // -----------------------------
+      // GUEST MODE: Joining a room
+      // -----------------------------
+      updateStatus('Connecting to server...', '');
+      peer = new Peer(); // Let server assign a random ID to us
+
+      peer.on('open', (id) => {
+        updateStatus('Connecting to host...', '');
+        conn = peer.connect(roomCode);
+        setupConnection(conn);
+      });
+
+      peer.on('error', (err) => {
+        updateStatus('Connection error. Invalid code?', 'disconnected');
+        appendMessage('Failed to connect. The host might have left or the code is wrong.', 'system');
+        console.error(err);
+      });
+
+    } else {
+      // -----------------------------
+      // HOST MODE: Creating a room
+      // -----------------------------
+      const newCode = generateId();
+      updateStatus('Creating room...', '');
+      peer = new Peer(newCode); // Force our ID to be the new code
+
+      peer.on('open', (id) => {
+        updateStatus('Waiting for friend...', '');
+        
+        // Construct the shareable URL and update the browser without reloading
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        const shareUrl = `${cleanUrl}?code=${id}`;
+        
+        window.history.pushState({path: shareUrl}, '', shareUrl);
+        
+        // Show share UI
+        shareLinkInput.value = shareUrl;
+        shareContainer.style.display = 'block';
+      });
+
+      // Listen for incoming connections
+      peer.on('connection', (connection) => {
+        if (conn && conn.open) {
+          // Reject new connections if we are already chatting
+          connection.on('open', () => {
+            connection.send('Room is full.');
+            connection.close();
+          });
+          return;
+        }
+        conn = connection;
+        setupConnection(conn);
+      });
+
+      peer.on('error', (err) => {
+        updateStatus('Error initializing peer', 'disconnected');
+        console.error(err);
+      });
+    }
+
+    // Common Connection Setup Logic
+    function setupConnection(connection) {
+      connection.on('open', () => {
+        updateStatus('Connected to friend', 'connected');
+        shareContainer.style.display = 'none'; // Hide share link
+        
+        // Enable inputs
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        messageInput.placeholder = "Type a message...";
+        messageInput.focus();
+
+        appendMessage('You are securely connected! Say hi.', 'system');
+      });
+
+      connection.on('data', (data) => {
+        appendMessage(data, 'received');
+      });
+
+      connection.on('close', () => {
+        updateStatus('Friend disconnected', 'disconnected');
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        messageInput.placeholder = "Connection closed.";
+        appendMessage('Your friend has left the chat.', 'system');
+      });
+    }
+
+    // Sending Messages
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (text && conn && conn.open) {
+        conn.send(text);
+        appendMessage(text, 'sent');
+        messageInput.value = '';
+        messageInput.focus();
+      }
+    }
+
+    // Allow pressing "Enter" to send
+    messageInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Copy Share Link feature
+    function copyLink() {
+      shareLinkInput.select();
+      shareLinkInput.setSelectionRange(0, 99999); // For mobile devices
+      navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = originalText, 2000);
+      });
+    }
+  </script>
 </body>
 </html>
