@@ -244,7 +244,8 @@
     </div>
 
     <div class="chat-area" id="chat-area">
-      </div>
+      <!-- Messages will appear here -->
+    </div>
 
     <div class="input-area">
       <input type="text" id="message-input" placeholder="Waiting for connection..." disabled>
@@ -285,14 +286,24 @@
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
-    // STUN Servers to bypass firewalls and strict NATs
+    // UPDATED: Added a free TURN server to bypass strict firewalls/mobile networks.
+    // Also added debug: 3 to output logs to the browser console if it fails.
     const peerConfig = {
+      debug: 3, 
       config: {
         'iceServers': [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' }
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
         ]
       }
     };
@@ -302,19 +313,22 @@
 
     if (roomCode) {
       // GUEST MODE
-      updateStatus('Connecting to server...', '');
+      updateStatus('Connecting to signaling server...', '');
       peer = new Peer(undefined, peerConfig); 
 
       peer.on('open', (id) => {
         updateStatus('Connecting to host...', '');
-        conn = peer.connect(roomCode);
+        console.log("Guest: Connected to signaling server, attempting to reach room:", roomCode);
+        
+        // Added reliable: true to force a strict data connection
+        conn = peer.connect(roomCode, { reliable: true });
         setupConnection(conn);
       });
 
       peer.on('error', (err) => {
         updateStatus('Connection error', 'disconnected');
-        appendMessage('Failed to connect. The host might have left, the code is wrong, or a firewall is blocking the connection.', 'system');
-        console.error(err);
+        appendMessage(`Error: ${err.type} - Please check the browser console.`, 'system');
+        console.error("PeerJS Error:", err);
       });
 
     } else {
@@ -325,17 +339,24 @@
 
       peer.on('open', (id) => {
         updateStatus('Waiting for friend...', '');
+        console.log("Host: Room created with ID:", id);
         
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        const cleanUrl = window.location.href.split('?')[0];
         const shareUrl = `${cleanUrl}?code=${id}`;
         
-        window.history.pushState({path: shareUrl}, '', shareUrl);
+        // Wrap pushState in a try-catch to prevent SecurityErrors in blob/iframe environments
+        try {
+          window.history.pushState({path: shareUrl}, '', shareUrl);
+        } catch (err) {
+          console.warn("History pushState blocked by browser environment (e.g., iframe/blob). Link generation will continue.", err);
+        }
         
         shareLinkInput.value = shareUrl;
         shareContainer.style.display = 'block';
       });
 
       peer.on('connection', (connection) => {
+        console.log("Host: Received incoming connection request");
         if (conn && conn.open) {
           connection.on('open', () => {
             connection.send('Room is full.');
@@ -349,12 +370,14 @@
 
       peer.on('error', (err) => {
         updateStatus('Error initializing peer', 'disconnected');
-        console.error(err);
+        console.error("PeerJS Error:", err);
       });
     }
 
     function setupConnection(connection) {
+      // Wait for the specific data connection to open
       connection.on('open', () => {
+        console.log("Connection fully established!");
         updateStatus('Connected to friend', 'connected');
         shareContainer.style.display = 'none';
         
@@ -377,6 +400,11 @@
         messageInput.placeholder = "Connection closed.";
         appendMessage('Your friend has left the chat.', 'system');
       });
+      
+      connection.on('error', (err) => {
+         console.error("Connection Error:", err);
+         appendMessage("Connection dropped.", "system");
+      });
     }
 
     function sendMessage() {
@@ -398,12 +426,21 @@
     function copyLink() {
       shareLinkInput.select();
       shareLinkInput.setSelectionRange(0, 99999);
-      navigator.clipboard.writeText(shareLinkInput.value).then(() => {
-        const btn = document.getElementById('copy-btn');
-        const originalText = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = originalText, 2000);
-      });
+      
+      // Use execCommand instead of navigator.clipboard to avoid permission errors in iframes
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          const btn = document.getElementById('copy-btn');
+          const originalText = btn.innerText;
+          btn.innerText = 'Copied!';
+          setTimeout(() => btn.innerText = originalText, 2000);
+        } else {
+          console.warn('Fallback copy command was unsuccessful');
+        }
+      } catch (err) {
+        console.error('Oops, unable to copy', err);
+      }
     }
   </script>
 </body>
