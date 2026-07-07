@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AudioStream Podcaster</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --primary: #ff3333;
+      --text: #ffffff;
+      --text-secondary: #aaaaaa;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      margin: 0;
+    }
+    h1, h2 { margin-top: 0; }
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    input {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #333;
+    }
+    input:focus { outline: 1px solid var(--primary); }
+    button {
+      background: var(--primary);
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .secondary-btn { background: #2980b9; }
+    .success-btn { background: #27ae60; }
+    audio { width: 100%; margin: 15px 0; display: block; }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--surface);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #333;
+    }
+    .item-text {
+      cursor: pointer;
+      color: #3498db;
+      flex-grow: 1;
+      padding-right: 10px;
+    }
+    .del-btn {
+      width: auto;
+      background: #c0392b;
+      padding: 6px 12px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .track-status {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 5px 0 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="card">
+      <h1>AudioStream</h1>
+      <input type="text" id="youtubeUrl" placeholder="Paste YouTube Video URL...">
+      <button id="btnLoad">Stream Audio</button>
+      <div id="statusText" class="track-status">Ready to load stream</div>
+      
+      <audio id="player" controls autoplay playsinline></audio>
+      
+      <button id="btnFav" class="success-btn">❤️ Save to Favorites</button>
+      <button id="btnBookmark" class="secondary-btn">🔖 Bookmark Timestamp</button>
+    </div>
+
+    <div class="card">
+      <h2>Favorites</h2>
+      <div id="favList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Bookmarks</h2>
+      <div id="bookmarkList"></div>
+    </div>
+  </div>
+
+  <script>
+    const player = document.getElementById('player');
+    const btnLoad = document.getElementById('btnLoad');
+    const btnFav = document.getElementById('btnFav');
+    const btnBookmark = document.getElementById('btnBookmark');
+    const statusText = document.getElementById('statusText');
+    const youtubeUrlInput = document.getElementById('youtubeUrl');
+
+    let activeVideoId = '';
+    let activeTitle = 'No Track Loaded';
+
+    // List of fallback public Invidious instances if one fails
+    const INVIDIOUS_INSTANCES = [
+      'https://inv.tux.digital',
+      'https://invidious.nerdvpn.de',
+      'https://yewtu.be',
+      'https://invidious.flokinet.to'
+    ];
+    let currentInstanceIdx = 0;
+
+    // 1. EXTRACT ID AND FETCH AUDIO SOURCE
+    async function fetchAudio(url, retryCount = 0) {
+      const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+      const match = url.match(regExp);
+      
+      if (!match) {
+        statusText.innerText = "❌ Invalid URL format.";
+        return;
+      }
+      
+      activeVideoId = match[1];
+      statusText.innerText = "⏳ Extracting audio stream...";
+
+      const baseApi = INVIDIOUS_INSTANCES[currentInstanceIdx];
+      
+      try {
+        const res = await fetch(`${baseApi}/api/v1/videos/${activeVideoId}`);
+        if (!res.ok) throw new Error("Instance response failed");
+        
+        const data = await res.json();
+        activeTitle = data.title;
+        statusText.innerText = `🎵 Playing: ${activeTitle}`;
+
+        // Find standard audio-only streams (WebM or MP4 containers)
+        const stream = data.adaptiveFormats.find(f => f.type.includes('audio/webm') || f.type.includes('audio/mp4'));
+        
+        if (stream && stream.url) {
+          player.src = stream.url;
+          player.play();
+          configureMediaSession();
+        } else {
+          throw new Error("No audio stream found format");
+        }
+      } catch (err) {
+        console.warn(`Instance ${baseApi} failed. Trying next instance...`);
+        if (retryCount < INVIDIOUS_INSTANCES.length - 1) {
+          currentInstanceIdx = (currentInstanceIdx + 1) % INVIDIOUS_INSTANCES.length;
+          fetchAudio(url, retryCount + 1);
+        } else {
+          statusText.innerText = "❌ All proxy instances failed. Try again later.";
+        }
+      }
+    }
+
+    // 2. CRITICAL STEP FOR ANDROID BACKGROUND BACKGROUND CONTROL
+    function configureMediaSession() {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: activeTitle,
+          artist: 'AudioStream Web App',
+          artwork: [{ src: `https://img.youtube.com/vi/${activeVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => player.play());
+        navigator.mediaSession.setActionHandler('pause', () => player.pause());
+        navigator.mediaSession.setActionHandler('seekbackward', () => player.currentTime = Math.max(player.currentTime - 10, 0));
+        navigator.mediaSession.setActionHandler('seekforward', () => player.currentTime = Math.min(player.currentTime + 10, player.duration));
+      }
+    }
+
+    // 3. LOCAL STORAGE MANAGEMENT
+    function readData(key) { return JSON.parse(localStorage.getItem(key)) || []; }
+    function writeData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+    function updateUiLists() {
+      const favorites = readData('favorites');
+      const bookmarks = readData('bookmarks');
+
+      document.getElementById('favList').innerHTML = favorites.map((item, idx) => `
+        <div class="item">
+          <span class="item-text" onclick="directPlay('${item.id}')">❤️ ${item.title}</span>
+          <button class="del-btn" onclick="removeItem('favorites', ${idx})">Remove</button>
+        </div>
+      `).join('');
+
+      document.getElementById('bookmarkList').innerHTML = bookmarks.map((item, idx) => `
+        <div class="item">
+          <span class="item-text" onclick="jumpToBookmark('${item.id}', ${item.time})">🔖 ${item.title} (${Math.floor(item.time)}s)</span>
+          <button class="del-btn" onclick="removeItem('bookmarks', ${idx})">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    window.removeItem = function(key, idx) {
+      let list = readData(key);
+      list.splice(idx, 1);
+      writeData(key, list);
+      updateUiLists();
+    };
+
+    window.directPlay = function(id) {
+      youtubeUrlInput.value = `https://www.youtube.com/watch?v=${id}`;
+      fetchAudio(youtubeUrlInput.value);
+    };
+
+    window.jumpToBookmark = function(id, time) {
+      youtubeUrlInput.value = `https://www.youtube.com/watch?v=${id}`;
+      fetchAudio(youtubeUrlInput.value);
+      player.addEventListener('loadedmetadata', () => {
+        player.currentTime = time;
+      }, { once: true });
+    };
+
+    // EVENT BINDINGS
+    btnLoad.addEventListener('click', () => fetchAudio(youtubeUrlInput.value));
+
+    btnFav.addEventListener('click', () => {
+      if (!activeVideoId) return;
+      let favorites = readData('favorites');
+      if (!favorites.some(f => f.id === activeVideoId)) {
+        favorites.push({ id: activeVideoId, title: activeTitle });
+        writeData('favorites', favorites);
+        updateUiLists();
+      }
+    });
+
+    btnBookmark.addEventListener('click', () => {
+      if (!activeVideoId) return;
+      let bookmarks = readData('bookmarks');
+      bookmarks.push({ id: activeVideoId, title: activeTitle, time: player.currentTime });
+      writeData('bookmarks', bookmarks);
+      updateUiLists();
+    });
+
+    // Initial View Rendering
+    updateUiLists();
+  </script>
+</body>
+</html>
