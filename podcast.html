@@ -3,110 +3,133 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AudioStream Podcaster</title>
+  <title>Stream</title>
   <style>
-    :root {
-      --bg: #121212;
-      --surface: #1e1e1e;
-      --primary: #ff3333;
-      --text: #ffffff;
-      --text-secondary: #aaaaaa;
-    }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      padding: 20px;
-      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #ffffff;
+      color: #111111;
+      padding: 40px 25px;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
     }
-    h1, h2 { margin-top: 0; }
-    input, button {
-      width: 100%;
-      padding: 14px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: none;
-      box-sizing: border-box;
-      font-size: 16px;
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #111111; color: #eeeeee; }
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+      margin-bottom: 40px;
     }
     input {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid #333;
+      width: 100%;
+      padding: 12px 0;
+      margin-bottom: 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #cccccc;
+      color: inherit;
+      font-size: 16px;
+      border-radius: 0;
+      outline: none;
+      box-sizing: border-box;
     }
-    input:focus { outline: 1px solid var(--primary); }
+    input:focus { border-bottom: 1px solid #111111; }
+    @media (prefers-color-scheme: dark) {
+      input { border-bottom: 1px solid #444444; }
+      input:focus { border-bottom: 1px solid #eeeeee; }
+    }
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
     button {
-      background: var(--primary);
-      color: #fff;
-      font-weight: bold;
+      background: transparent;
+      border: 1px solid #111111;
+      color: #111111;
+      padding: 10px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       cursor: pointer;
     }
-    .secondary-btn { background: #2980b9; }
-    .success-btn { background: #27ae60; }
-    audio { width: 100%; margin: 15px 0; display: block; }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
+    @media (prefers-color-scheme: dark) {
+      button { border: 1px solid #eeeeee; color: #eeeeee; }
     }
-    .card {
-      background: var(--surface);
-      padding: 20px;
-      border-radius: 12px;
+    button:hover { background: #111111; color: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      button:hover { background: #eeeeee; color: #111111; }
+    }
+    .track-status {
+      font-size: 13px;
+      color: #666666;
       margin-bottom: 20px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    audio {
+      width: 100%;
+      margin: 20px 0 40px 0;
+      outline: none;
+    }
+    h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888888;
+      margin-top: 40px;
+      border-bottom: 1px solid #eeeeee;
+      padding-bottom: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      h2 { border-bottom: 1px solid #333333; }
     }
     .item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #333;
+      padding: 14px 0;
+      border-bottom: 1px solid #eeeeee;
+      font-size: 14px;
     }
-    .item-text {
-      cursor: pointer;
-      color: #3498db;
-      flex-grow: 1;
-      padding-right: 10px;
+    @media (prefers-color-scheme: dark) {
+      .item { border-bottom: 1px solid #333333; }
     }
+    .item-text { cursor: pointer; flex-grow: 1; }
     .del-btn {
-      width: auto;
-      background: #c0392b;
-      padding: 6px 12px;
-      font-size: 14px;
+      border: none;
+      padding: 0;
       margin: 0;
+      color: #888888;
+      background: transparent;
     }
-    .track-status {
-      font-size: 14px;
-      color: var(--text-secondary);
-      margin: 5px 0 15px 0;
+    .del-btn:hover { background: transparent; color: #111111; }
+    @media (prefers-color-scheme: dark) {
+      .del-btn:hover { background: transparent; color: #eeeeee; }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="card">
-      <h1>AudioStream</h1>
-      <input type="text" id="youtubeUrl" placeholder="Paste YouTube Video URL...">
-      <button id="btnLoad">Stream Audio</button>
-      <div id="statusText" class="track-status">Ready to load stream</div>
-      
-      <audio id="player" controls autoplay playsinline></audio>
-      
-      <button id="btnFav" class="success-btn">❤️ Save to Favorites</button>
-      <button id="btnBookmark" class="secondary-btn">🔖 Bookmark Timestamp</button>
-    </div>
-
-    <div class="card">
-      <h2>Favorites</h2>
-      <div id="favList"></div>
-    </div>
-
-    <div class="card">
-      <h2>Bookmarks</h2>
-      <div id="bookmarkList"></div>
-    </div>
+  <h1>Stream</h1>
+  <input type="text" id="youtubeUrl" placeholder="Paste URL here...">
+  
+  <div class="button-group">
+    <button id="btnLoad">Play</button>
+    <button id="btnFav">Save</button>
+    <button id="btnBookmark">Bookmark</button>
   </div>
+
+  <div id="statusText" class="track-status">Initializing networking...</div>
+  
+  <audio id="player" controls autoplay playsinline></audio>
+  
+  <h2>Favorites</h2>
+  <div id="favList"></div>
+
+  <h2>Bookmarks</h2>
+  <div id="bookmarkList"></div>
 
   <script>
     const player = document.getElementById('player');
@@ -118,73 +141,71 @@
 
     let activeVideoId = '';
     let activeTitle = 'No Track Loaded';
-    let activeThumbnail = '';
+    let instanceRegistry = [];
 
-    // Switch to Piped API public instances (More reliable for audio streaming)
-    const PIPED_INSTANCES = [
-      'https://pipedapi.kavin.rocks',
-      'https://pipedapi.syncs.dev',
-      'https://pipedapi.drgns.space',
-      'https://piped-api.lunar.icu'
-    ];
-    let currentInstanceIdx = 0;
+    // 1. DYNAMICALLY FETCH HEALTHY, CORS-ENABLED INSTANCES
+    async function fetchInstanceRegistry() {
+      try {
+        const res = await fetch("https://api.invidious.io/instances.json?sort_by=health");
+        const data = await res.json();
+        
+        instanceRegistry = data
+          .filter(i => i[1].type === "https" && i[1].api === true && i[1].cors === true)
+          .map(i => i[1].uri);
+          
+        statusText.innerText = `Ready. Linked to ${instanceRegistry.length} active nodes.`;
+      } catch (err) {
+        instanceRegistry = ['https://inv.tux.digital', 'https://invidious.nerdvpn.de'];
+        statusText.innerText = "Ready. Linked to fallback nodes.";
+      }
+    }
 
-    // 1. EXTRACT ID AND FETCH AUDIO SOURCE VIA PIPED API
-    async function fetchAudio(url, retryCount = 0) {
+    // 2. ITERATE THROUGH NODES UNTIL AUDIO EXTRACTS
+    async function fetchAudio(url) {
       const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
       const match = url.match(regExp);
       
       if (!match) {
-        statusText.innerText = "❌ Invalid URL format.";
+        statusText.innerText = "Invalid URL format.";
         return;
       }
       
       activeVideoId = match[1];
-      statusText.innerText = "⏳ Extracting audio stream via Piped...";
-
-      const baseApi = PIPED_INSTANCES[currentInstanceIdx];
       
-      try {
-        const res = await fetch(`${baseApi}/streams/${activeVideoId}`);
-        if (!res.ok) throw new Error("Instance response failed");
-        
-        const data = await res.json();
-        
-        if (data.error) throw new Error(data.error);
-
-        activeTitle = data.title;
-        activeThumbnail = data.thumbnailUrl;
-        statusText.innerText = `🎵 Playing: ${activeTitle}`;
-
-        // Find the best audio-only stream (usually M4A or WebM)
-        if (data.audioStreams && data.audioStreams.length > 0) {
-          // Sort by bitrate to get a decent quality audio track
-          const bestAudio = data.audioStreams.sort((a, b) => b.bitrate - a.bitrate)[0];
+      for (const baseApi of instanceRegistry) {
+        try {
+          statusText.innerText = `Routing via ${baseApi.replace('https://', '')}...`;
           
-          player.src = bestAudio.url;
-          player.play();
-          configureMediaSession();
-        } else {
-          throw new Error("No audio stream found format");
-        }
-      } catch (err) {
-        console.warn(`Instance ${baseApi} failed. Trying next instance...`);
-        if (retryCount < PIPED_INSTANCES.length - 1) {
-          currentInstanceIdx = (currentInstanceIdx + 1) % PIPED_INSTANCES.length;
-          fetchAudio(url, retryCount + 1);
-        } else {
-          statusText.innerText = "❌ All Piped instances failed. YouTube might be blocking IPs.";
+          const res = await fetch(`${baseApi}/api/v1/videos/${activeVideoId}`);
+          if (!res.ok) continue; 
+          
+          const data = await res.json();
+          if (!data.adaptiveFormats) continue; 
+          
+          const stream = data.adaptiveFormats.find(f => f.type.includes('audio/webm') || f.type.includes('audio/mp4'));
+          
+          if (stream && stream.url) {
+            activeTitle = data.title;
+            statusText.innerText = `Playing: ${activeTitle}`;
+            player.src = stream.url;
+            player.play();
+            configureMediaSession();
+            return; 
+          }
+        } catch (err) {
+          console.warn(`Node ${baseApi} failed.`);
         }
       }
+      
+      statusText.innerText = "All active nodes failed to extract audio. Try again later.";
     }
 
-    // 2. CRITICAL STEP FOR ANDROID BACKGROUND BACKGROUND CONTROL
     function configureMediaSession() {
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: activeTitle,
-          artist: 'AudioStream Web App',
-          artwork: [{ src: activeThumbnail || `https://img.youtube.com/vi/${activeVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+          artist: 'Stream',
+          artwork: [{ src: `https://img.youtube.com/vi/${activeVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
         });
 
         navigator.mediaSession.setActionHandler('play', () => player.play());
@@ -194,7 +215,6 @@
       }
     }
 
-    // 3. LOCAL STORAGE MANAGEMENT
     function readData(key) { return JSON.parse(localStorage.getItem(key)) || []; }
     function writeData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
@@ -204,15 +224,15 @@
 
       document.getElementById('favList').innerHTML = favorites.map((item, idx) => `
         <div class="item">
-          <span class="item-text" onclick="directPlay('${item.id}')">❤️ ${item.title}</span>
-          <button class="del-btn" onclick="removeItem('favorites', ${idx})">Remove</button>
+          <span class="item-text" onclick="directPlay('${item.id}')">${item.title}</span>
+          <button class="del-btn" onclick="removeItem('favorites', ${idx})">REMOVE</button>
         </div>
       `).join('');
 
       document.getElementById('bookmarkList').innerHTML = bookmarks.map((item, idx) => `
         <div class="item">
-          <span class="item-text" onclick="jumpToBookmark('${item.id}', ${item.time})">🔖 ${item.title} (${Math.floor(item.time)}s)</span>
-          <button class="del-btn" onclick="removeItem('bookmarks', ${idx})">Remove</button>
+          <span class="item-text" onclick="jumpToBookmark('${item.id}', ${item.time})">${item.title} (${Math.floor(item.time)}s)</span>
+          <button class="del-btn" onclick="removeItem('bookmarks', ${idx})">REMOVE</button>
         </div>
       `).join('');
     }
@@ -237,7 +257,6 @@
       }, { once: true });
     };
 
-    // EVENT BINDINGS
     btnLoad.addEventListener('click', () => fetchAudio(youtubeUrlInput.value));
 
     btnFav.addEventListener('click', () => {
@@ -258,7 +277,7 @@
       updateUiLists();
     });
 
-    // Initial View Rendering
+    fetchInstanceRegistry();
     updateUiLists();
   </script>
 </body>
