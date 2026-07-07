@@ -118,17 +118,18 @@
 
     let activeVideoId = '';
     let activeTitle = 'No Track Loaded';
+    let activeThumbnail = '';
 
-    // List of fallback public Invidious instances if one fails
-    const INVIDIOUS_INSTANCES = [
-      'https://inv.tux.digital',
-      'https://invidious.nerdvpn.de',
-      'https://yewtu.be',
-      'https://invidious.flokinet.to'
+    // Switch to Piped API public instances (More reliable for audio streaming)
+    const PIPED_INSTANCES = [
+      'https://pipedapi.kavin.rocks',
+      'https://pipedapi.syncs.dev',
+      'https://pipedapi.drgns.space',
+      'https://piped-api.lunar.icu'
     ];
     let currentInstanceIdx = 0;
 
-    // 1. EXTRACT ID AND FETCH AUDIO SOURCE
+    // 1. EXTRACT ID AND FETCH AUDIO SOURCE VIA PIPED API
     async function fetchAudio(url, retryCount = 0) {
       const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
       const match = url.match(regExp);
@@ -139,23 +140,28 @@
       }
       
       activeVideoId = match[1];
-      statusText.innerText = "⏳ Extracting audio stream...";
+      statusText.innerText = "⏳ Extracting audio stream via Piped...";
 
-      const baseApi = INVIDIOUS_INSTANCES[currentInstanceIdx];
+      const baseApi = PIPED_INSTANCES[currentInstanceIdx];
       
       try {
-        const res = await fetch(`${baseApi}/api/v1/videos/${activeVideoId}`);
+        const res = await fetch(`${baseApi}/streams/${activeVideoId}`);
         if (!res.ok) throw new Error("Instance response failed");
         
         const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+
         activeTitle = data.title;
+        activeThumbnail = data.thumbnailUrl;
         statusText.innerText = `🎵 Playing: ${activeTitle}`;
 
-        // Find standard audio-only streams (WebM or MP4 containers)
-        const stream = data.adaptiveFormats.find(f => f.type.includes('audio/webm') || f.type.includes('audio/mp4'));
-        
-        if (stream && stream.url) {
-          player.src = stream.url;
+        // Find the best audio-only stream (usually M4A or WebM)
+        if (data.audioStreams && data.audioStreams.length > 0) {
+          // Sort by bitrate to get a decent quality audio track
+          const bestAudio = data.audioStreams.sort((a, b) => b.bitrate - a.bitrate)[0];
+          
+          player.src = bestAudio.url;
           player.play();
           configureMediaSession();
         } else {
@@ -163,11 +169,11 @@
         }
       } catch (err) {
         console.warn(`Instance ${baseApi} failed. Trying next instance...`);
-        if (retryCount < INVIDIOUS_INSTANCES.length - 1) {
-          currentInstanceIdx = (currentInstanceIdx + 1) % INVIDIOUS_INSTANCES.length;
+        if (retryCount < PIPED_INSTANCES.length - 1) {
+          currentInstanceIdx = (currentInstanceIdx + 1) % PIPED_INSTANCES.length;
           fetchAudio(url, retryCount + 1);
         } else {
-          statusText.innerText = "❌ All proxy instances failed. Try again later.";
+          statusText.innerText = "❌ All Piped instances failed. YouTube might be blocking IPs.";
         }
       }
     }
@@ -178,7 +184,7 @@
         navigator.mediaSession.metadata = new MediaMetadata({
           title: activeTitle,
           artist: 'AudioStream Web App',
-          artwork: [{ src: `https://img.youtube.com/vi/${activeVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+          artwork: [{ src: activeThumbnail || `https://img.youtube.com/vi/${activeVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
         });
 
         navigator.mediaSession.setActionHandler('play', () => player.play());
